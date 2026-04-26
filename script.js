@@ -11,9 +11,7 @@ const tbody = document.getElementById("tbody");
 let rawRows = [];
 let allColumns = [];
 let visibleColumns = [];
-
-// กันไม่ให้โชว์รายการแข่งขันตั้งแต่แรก
-let userActivatedEvents = false;
+let eventColumns = []; // รายการแข่งขันทั้งหมดในชีทปัจจุบัน
 
 // คอลัมน์หลักที่แสดงเสมอ
 const BASE_COLS = [
@@ -29,6 +27,10 @@ const BASE_COLS = [
 
 // คอลัมน์ที่ต้องชิดซ้าย
 const LEFT_ALIGN_COLS = new Set(["Name", "Team"]);
+
+// ค่าพิเศษใน dropdown
+const PLACEHOLDER = "__PLACEHOLDER__";
+const ALL_EVENTS = "__ALL_EVENTS__";
 
 // ===== Helpers =====
 function normalize(v) {
@@ -46,10 +48,12 @@ function isEventCol(col) {
   return true;
 }
 
-function getSelectedEvent() {
+function getEventMode() {
+  // return: "none" | "all" | "one"
   const v = eventSelect.value;
-  if (!v || v === "__PLACEHOLDER__") return "";
-  return v;
+  if (!v || v === PLACEHOLDER) return { mode: "none", key: "" };
+  if (v === ALL_EVENTS) return { mode: "all", key: "" };
+  return { mode: "one", key: v };
 }
 
 function setStatus(msg) {
@@ -93,32 +97,40 @@ async function loadSheet(sheetName) {
   rawRows = await res.json();
   allColumns = rawRows.length ? Object.keys(rawRows[0]) : [];
 
-  buildEventDropdown(allColumns);
+  // เตรียมรายการแข่งขันทั้งหมดจากชีทนี้
+  eventColumns = allColumns.filter(c => isEventCol(c));
 
-  // ค่าเริ่มต้น: ไม่โชว์รายการแข่งขัน
-  userActivatedEvents = false;
-  eventSelect.value = "__PLACEHOLDER__";
+  buildEventDropdown();
+
+  // ค่าเริ่มต้น: ไม่เลือก (แสดงเฉพาะ Total Point)
+  eventSelect.value = PLACEHOLDER;
 
   applyFilters();
 
-  setStatus(`โหลดแล้ว: ${sheetName} (${rawRows.length.toLocaleString()} แถว)`;
+  setStatus(`โหลดแล้ว: ${sheetName} (${rawRows.length.toLocaleString()} แถว)`);
 }
 
-// ===== Build dropdown (single select) =====
-function buildEventDropdown(cols) {
+// ===== Build dropdown (single select + all events option) =====
+function buildEventDropdown() {
   eventSelect.multiple = false;
   eventSelect.size = 0;
 
   eventSelect.innerHTML = "";
 
+  // 1) placeholder
   const placeholder = document.createElement("option");
-  placeholder.value = "__PLACEHOLDER__";
+  placeholder.value = PLACEHOLDER;
   placeholder.textContent = "— ไม่เลือก (แสดงเฉพาะ Total Point) —";
-  placeholder.selected = true;
   eventSelect.appendChild(placeholder);
 
-  const eventCols = cols.filter(c => isEventCol(c));
-  for (const c of eventCols) {
+  // 2) all events
+  const allOpt = document.createElement("option");
+  allOpt.value = ALL_EVENTS;
+  allOpt.textContent = "เลือกทุกรายการแข่งขัน";
+  eventSelect.appendChild(allOpt);
+
+  // 3) each event
+  for (const c of eventColumns) {
     const opt = document.createElement("option");
     opt.value = c;
     opt.textContent = c;
@@ -128,18 +140,24 @@ function buildEventDropdown(cols) {
 
 // ===== Visible columns =====
 function updateVisibleColumns() {
-  const selectedEvent = getSelectedEvent();
+  const { mode, key } = getEventMode();
   const base = BASE_COLS.filter(c => allColumns.includes(c));
 
-  // ยังไม่มี user action หรือยังไม่เลือก event จริง => แสดง base เท่านั้น
-  if (!userActivatedEvents || !selectedEvent) {
+  if (mode === "none") {
     visibleColumns = base;
     return;
   }
 
   const withoutTotal = base.filter(c => c !== "Total Point");
   const total = base.includes("Total Point") ? ["Total Point"] : [];
-  visibleColumns = [...withoutTotal, selectedEvent, ...total];
+
+  if (mode === "all") {
+    visibleColumns = [...withoutTotal, ...eventColumns, ...total];
+    return;
+  }
+
+  // mode === "one"
+  visibleColumns = [...withoutTotal, key, ...total];
 }
 
 // ===== Filters + Render =====
@@ -148,18 +166,31 @@ function applyFilters() {
   renderHeader(visibleColumns);
 
   const q = normalize(qInput.value);
-  const selectedEvent = getSelectedEvent();
+  const { mode, key } = getEventMode();
   const onlyPos = eventOnlyPositive.checked;
 
   const filtered = rawRows.filter(r => {
+    // search
     if (q) {
       const hay = normalize([r["Name"], r["Team"], r["Code"]].join(" "));
       if (!hay.includes(q)) return false;
     }
 
-    if (userActivatedEvents && selectedEvent && onlyPos) {
-      const val = Number(r[selectedEvent] ?? 0);
-      if (!(val > 0)) return false;
+    // only positive for selected
+    if (onlyPos && mode !== "none") {
+      if (mode === "one") {
+        const val = Number(r[key] ?? 0);
+        if (!(val > 0)) return false;
+      } else if (mode === "all") {
+        // ถ้าเลือก "ทุกการแข่งขัน" และติ๊ก only positive:
+        // เงื่อนไข = ต้องมีคะแนน >0 อย่างน้อย 1 รายการ
+        let ok = false;
+        for (const e of eventColumns) {
+          const val = Number(r[e] ?? 0);
+          if (val > 0) { ok = true; break; }
+        }
+        if (!ok) return false;
+      }
     }
 
     return true;
@@ -199,6 +230,7 @@ function formatCell(col, v) {
   if (isEventCol(col)) {
     const num = Number(v);
     if (!Number.isFinite(num)) return String(v);
+    // 0.00 ให้เป็นค่าว่าง
     if (Math.abs(num) < 1e-9) return "";
     return num.toFixed(2);
   }
@@ -228,12 +260,7 @@ function renderBody(rows, cols) {
 // ===== Events =====
 sheetSelect.addEventListener("change", () => loadSheet(sheetSelect.value));
 qInput.addEventListener("input", applyFilters);
-
-eventSelect.addEventListener("change", () => {
-  userActivatedEvents = true;
-  applyFilters();
-});
-
+eventSelect.addEventListener("change", applyFilters);
 eventOnlyPositive.addEventListener("change", applyFilters);
 
 // ===== Start =====
