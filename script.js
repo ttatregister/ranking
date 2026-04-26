@@ -46,16 +46,10 @@ function isEventCol(col) {
   return true;
 }
 
-function getSelectedEvents() {
-  return Array.from(eventSelect.selectedOptions)
-    .map(o => o.value)
-    .filter(v => v && v !== "__PLACEHOLDER__");
-}
-
-function clearEventSelection() {
-  for (const opt of eventSelect.options) opt.selected = false;
-  const ph = eventSelect.querySelector('option[value="__PLACEHOLDER__"]');
-  if (ph) ph.selected = true;
+function getSelectedEvent() {
+  const v = eventSelect.value;
+  if (!v || v === "__PLACEHOLDER__") return "";
+  return v;
 }
 
 function setStatus(msg) {
@@ -103,22 +97,20 @@ async function loadSheet(sheetName) {
 
   // ค่าเริ่มต้น: ไม่โชว์รายการแข่งขัน
   userActivatedEvents = false;
-  clearEventSelection();
+  eventSelect.value = "__PLACEHOLDER__";
 
   applyFilters();
 
-  setStatus(`โหลดแล้ว: ${sheetName} (${rawRows.length.toLocaleString()} แถว)`);
+  setStatus(`โหลดแล้ว: ${sheetName} (${rawRows.length.toLocaleString()} แถว)`;
 }
 
-// ===== Event dropdown (multiple + placeholder) =====
+// ===== Build dropdown (single select) =====
 function buildEventDropdown(cols) {
-  // เลือกได้หลายรายการ
-  eventSelect.multiple = true;
-  eventSelect.size = 8;
+  eventSelect.multiple = false;
+  eventSelect.size = 0;
 
   eventSelect.innerHTML = "";
 
-  // placeholder (เป็นตัวเลือกเริ่มต้น)
   const placeholder = document.createElement("option");
   placeholder.value = "__PLACEHOLDER__";
   placeholder.textContent = "— ไม่เลือก (แสดงเฉพาะ Total Point) —";
@@ -130,27 +122,24 @@ function buildEventDropdown(cols) {
     const opt = document.createElement("option");
     opt.value = c;
     opt.textContent = c;
-    opt.selected = false;
     eventSelect.appendChild(opt);
   }
 }
 
 // ===== Visible columns =====
 function updateVisibleColumns() {
-  const selectedEvents = getSelectedEvents();
+  const selectedEvent = getSelectedEvent();
   const base = BASE_COLS.filter(c => allColumns.includes(c));
 
-  // ถ้ายังไม่มี user action หรือยังไม่เลือก event จริง => แสดง base เท่านั้น
-  if (!userActivatedEvents || selectedEvents.length === 0) {
+  // ยังไม่มี user action หรือยังไม่เลือก event จริง => แสดง base เท่านั้น
+  if (!userActivatedEvents || !selectedEvent) {
     visibleColumns = base;
     return;
   }
 
   const withoutTotal = base.filter(c => c !== "Total Point");
   const total = base.includes("Total Point") ? ["Total Point"] : [];
-  const events = selectedEvents.filter(e => allColumns.includes(e));
-
-  visibleColumns = [...withoutTotal, ...events, ...total];
+  visibleColumns = [...withoutTotal, selectedEvent, ...total];
 }
 
 // ===== Filters + Render =====
@@ -159,7 +148,7 @@ function applyFilters() {
   renderHeader(visibleColumns);
 
   const q = normalize(qInput.value);
-  const selectedEvents = getSelectedEvents();
+  const selectedEvent = getSelectedEvent();
   const onlyPos = eventOnlyPositive.checked;
 
   const filtered = rawRows.filter(r => {
@@ -168,13 +157,9 @@ function applyFilters() {
       if (!hay.includes(q)) return false;
     }
 
-    if (userActivatedEvents && selectedEvents.length && onlyPos) {
-      let ok = false;
-      for (const e of selectedEvents) {
-        const val = Number(r[e] ?? 0);
-        if (val > 0) { ok = true; break; }
-      }
-      if (!ok) return false;
+    if (userActivatedEvents && selectedEvent && onlyPos) {
+      const val = Number(r[selectedEvent] ?? 0);
+      if (!(val > 0)) return false;
     }
 
     return true;
@@ -246,8 +231,6 @@ qInput.addEventListener("input", applyFilters);
 
 eventSelect.addEventListener("change", () => {
   userActivatedEvents = true;
-  const ph = eventSelect.querySelector('option[value="__PLACEHOLDER__"]');
-  if (ph) ph.selected = false; // ผู้ใช้เลือกอย่างอื่นแล้ว ปลด placeholder
   applyFilters();
 });
 
