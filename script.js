@@ -44,17 +44,7 @@ let allColumns = [];
 let visibleColumns = [];
 let eventColumns = [];
 
-const BASE_COLS = [
-  "Rank",
-  "Rank (Prev)",
-  "Code",
-  "Name",
-  "Birth Year",
-  "Team",
-  "Age",
-  "Total Point",
-];
-
+const BASE_COLS = ["Rank", "Rank (Prev)", "Code", "Name", "Birth Year", "Team", "Age", "Total Point"];
 const LEFT_ALIGN_COLS = new Set(["Name", "Team"]);
 const PLACEHOLDER = "__PLACEHOLDER__";
 const ALL_EVENTS = "__ALL_EVENTS__";
@@ -131,15 +121,8 @@ function isEventCol(col) {
 
 function getEventMode() {
   const v = eventSelect.value;
-
-  if (!v || v === PLACEHOLDER) {
-    return { mode: "none", key: "" };
-  }
-
-  if (v === ALL_EVENTS) {
-    return { mode: "all", key: "" };
-  }
-
+  if (!v || v === PLACEHOLDER) return { mode: "none", key: "" };
+  if (v === ALL_EVENTS) return { mode: "all", key: "" };
   return { mode: "one", key: v };
 }
 
@@ -168,9 +151,7 @@ async function loadSheet(sheetName) {
   const url = SHEETS[sheetName] + `&t=${Date.now()}`;
   const res = await fetch(url);
 
-  if (!res.ok) {
-    throw new Error(`โหลดข้อมูล ${sheetName} ไม่สำเร็จ`);
-  }
+  if (!res.ok) throw new Error(`โหลดข้อมูล ${sheetName} ไม่สำเร็จ`);
 
   const csvText = await res.text();
   rawRows = csvToObjects(csvText);
@@ -251,7 +232,6 @@ function applyFilters() {
 
       if (mode === "all") {
         let ok = false;
-
         for (const e of eventColumns) {
           const val = Number(r[e] || 0);
           if (val > 0) {
@@ -259,7 +239,6 @@ function applyFilters() {
             break;
           }
         }
-
         if (!ok) return false;
       }
     }
@@ -278,9 +257,9 @@ function renderHeader(cols) {
     const th = document.createElement("th");
     th.textContent = c;
 
-    if (LEFT_ALIGN_COLS.has(c)) {
-      th.classList.add("left-col");
-    }
+    if (LEFT_ALIGN_COLS.has(c)) th.classList.add("left-col");
+    if (c === "Rank") th.classList.add("sticky-rank");
+    if (c === "Name") th.classList.add("sticky-name");
 
     tr.appendChild(th);
   }
@@ -312,6 +291,35 @@ function formatCell(col, v) {
   return String(v);
 }
 
+function getRankClass(row) {
+  const rank = Number(row["Rank"]);
+  if (rank === 1) return "rank-1";
+  if (rank === 2) return "rank-2";
+  if (rank === 3) return "rank-3";
+  return "";
+}
+
+function getRankMovement(row) {
+  const rank = Number(row["Rank"]);
+  const prev = Number(row["Rank (Prev)"]);
+
+  if (!Number.isFinite(rank) || !Number.isFinite(prev)) {
+    return `<span>${row["Rank"] ?? ""}</span>`;
+  }
+
+  const diff = prev - rank;
+
+  if (diff > 0) {
+    return `<span class="rank-move">${rank} <span class="move-up">▲${diff}</span></span>`;
+  }
+
+  if (diff < 0) {
+    return `<span class="rank-move">${rank} <span class="move-down">▼${Math.abs(diff)}</span></span>`;
+  }
+
+  return `<span class="rank-move">${rank} <span class="move-same">▬</span></span>`;
+}
+
 function renderBody(rows, cols) {
   tbody.innerHTML = "";
   const frag = document.createDocumentFragment();
@@ -319,13 +327,21 @@ function renderBody(rows, cols) {
   for (const r of rows) {
     const tr = document.createElement("tr");
 
+    const rankClass = getRankClass(r);
+    if (rankClass) tr.classList.add(rankClass);
+
     for (const c of cols) {
       const td = document.createElement("td");
-      td.textContent = formatCell(c, r[c]);
 
-      if (LEFT_ALIGN_COLS.has(c)) {
-        td.classList.add("left-col");
+      if (c === "Rank") {
+        td.innerHTML = getRankMovement(r);
+        td.classList.add("sticky-rank");
+      } else {
+        td.textContent = formatCell(c, r[c]);
       }
+
+      if (c === "Name") td.classList.add("sticky-name");
+      if (LEFT_ALIGN_COLS.has(c)) td.classList.add("left-col");
 
       tr.appendChild(td);
     }
@@ -336,10 +352,7 @@ function renderBody(rows, cols) {
   tbody.appendChild(frag);
 }
 
-sheetSelect.addEventListener("change", () => {
-  loadSheet(sheetSelect.value);
-});
-
+sheetSelect.addEventListener("change", () => loadSheet(sheetSelect.value));
 qInput.addEventListener("input", applyFilters);
 eventSelect.addEventListener("change", applyFilters);
 eventOnlyPositive.addEventListener("change", applyFilters);

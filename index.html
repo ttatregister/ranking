@@ -12,15 +12,12 @@
       --blue: #0057ff;
       --red: #e60023;
       --bg: #f4f7fb;
-      --card: #ffffff;
       --line: #e5eaf1;
       --text: #071225;
       --muted: #64748b;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -172,7 +169,6 @@
       display: flex;
       align-items: center;
       justify-content: flex-start;
-      gap: 12px;
       padding: 16px 18px;
       background: linear-gradient(90deg, #ffffff, #f8fbff);
       border-bottom: 1px solid var(--line);
@@ -207,7 +203,7 @@
     th {
       position: sticky;
       top: 0;
-      z-index: 3;
+      z-index: 4;
       background: var(--navy);
       color: #fff;
       font-weight: 900;
@@ -236,6 +232,58 @@
       color: var(--blue);
     }
 
+    tr.rank-1 td {
+      background: #fff7d6 !important;
+      font-weight: 900;
+    }
+
+    tr.rank-2 td {
+      background: #f1f5f9 !important;
+      font-weight: 800;
+    }
+
+    tr.rank-3 td {
+      background: #fff1e6 !important;
+      font-weight: 800;
+    }
+
+    .rank-move {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 900;
+    }
+
+    .move-up { color: #16a34a; }
+    .move-down { color: #dc2626; }
+    .move-same { color: #64748b; }
+
+    th.sticky-rank,
+    td.sticky-rank {
+      position: sticky;
+      left: 0;
+      z-index: 6;
+      min-width: 78px;
+      background: inherit;
+    }
+
+    th.sticky-name,
+    td.sticky-name {
+      position: sticky;
+      left: 78px;
+      z-index: 6;
+      min-width: 240px;
+      background: inherit;
+    }
+
+    th.sticky-rank,
+    th.sticky-name {
+      z-index: 12;
+      background: var(--navy) !important;
+      color: #fff;
+    }
+
     @media (max-width: 1100px) {
       .grid {
         grid-template-columns: 1fr 1fr;
@@ -245,6 +293,11 @@
     @media (max-width: 720px) {
       .hero {
         padding: 26px 16px 44px;
+      }
+
+      .brand {
+        font-size: 11px;
+        padding: 6px 10px;
       }
 
       .wrap {
@@ -266,6 +319,7 @@
         min-height: auto;
         padding: 13px;
         border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(15,23,42,.08);
       }
 
       h1 {
@@ -276,13 +330,20 @@
         font-size: 14px;
       }
 
-      .table-title {
-        flex-direction: column;
-        align-items: flex-start;
+      select,
+      input {
+        height: 52px;
+        font-size: 16px;
+      }
+
+      .table-section {
+        border-radius: 18px;
       }
 
       .tableWrap {
         max-height: none;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
 
       table {
@@ -293,6 +354,17 @@
       td {
         padding: 11px 12px;
         font-size: 13px;
+      }
+
+      th.sticky-rank,
+      td.sticky-rank {
+        min-width: 70px;
+      }
+
+      th.sticky-name,
+      td.sticky-name {
+        left: 70px;
+        min-width: 190px;
       }
     }
   </style>
