@@ -259,31 +259,6 @@
     .move-down { color: #dc2626; }
     .move-same { color: #64748b; }
 
-    th.sticky-rank,
-    td.sticky-rank {
-      position: sticky;
-      left: 0;
-      z-index: 6;
-      min-width: 78px;
-      background: inherit;
-    }
-
-    th.sticky-name,
-    td.sticky-name {
-      position: sticky;
-      left: 78px;
-      z-index: 6;
-      min-width: 240px;
-      background: inherit;
-    }
-
-    th.sticky-rank,
-    th.sticky-name {
-      z-index: 12;
-      background: var(--navy) !important;
-      color: #fff;
-    }
-
     @media (max-width: 1100px) {
       .grid {
         grid-template-columns: 1fr 1fr;
@@ -354,17 +329,6 @@
       td {
         padding: 11px 12px;
         font-size: 13px;
-      }
-
-      th.sticky-rank,
-      td.sticky-rank {
-        min-width: 70px;
-      }
-
-      th.sticky-name,
-      td.sticky-name {
-        left: 70px;
-        min-width: 190px;
       }
     }
   </style>

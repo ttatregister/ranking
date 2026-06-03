@@ -257,9 +257,9 @@ function renderHeader(cols) {
     const th = document.createElement("th");
     th.textContent = c;
 
-    if (LEFT_ALIGN_COLS.has(c)) th.classList.add("left-col");
-    if (c === "Rank") th.classList.add("sticky-rank");
-    if (c === "Name") th.classList.add("sticky-name");
+    if (LEFT_ALIGN_COLS.has(c)) {
+      th.classList.add("left-col");
+    }
 
     tr.appendChild(th);
   }
@@ -335,13 +335,13 @@ function renderBody(rows, cols) {
 
       if (c === "Rank") {
         td.innerHTML = getRankMovement(r);
-        td.classList.add("sticky-rank");
       } else {
         td.textContent = formatCell(c, r[c]);
       }
 
-      if (c === "Name") td.classList.add("sticky-name");
-      if (LEFT_ALIGN_COLS.has(c)) td.classList.add("left-col");
+      if (LEFT_ALIGN_COLS.has(c)) {
+        td.classList.add("left-col");
+      }
 
       tr.appendChild(td);
     }
